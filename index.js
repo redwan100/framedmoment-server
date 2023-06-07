@@ -41,45 +41,48 @@ async function run() {
     await client.connect();
     // Send a ping to confirm a successful connection
 
-    const userCollection = client.db("photographyDB").collection('users')
-    const classCollection = client.db("photographyDB").collection('classes')
+    const userCollection = client.db("photographyDB").collection("users");
+    const classCollection = client.db("photographyDB").collection("classes");
 
-/* -------------------------------------------------------------------------- */
-/*                                  GET ROUTE                                 */
-/* -------------------------------------------------------------------------- */
+    /* -------------------------------------------------------------------------- */
+    /*                                  GET ROUTE                                 */
+    /* -------------------------------------------------------------------------- */
+
+    /* -------------------------------- ALL USERS ------------------------------- */
+    app.get('/all-users', async(req, res) => {
+        const result =await userCollection.find().toArray();
+        res.send(result)
+    })
 
 
-    
 
 
     /* -------------------------------------------------------------------------- */
     /*                                    POST ROUTE                                */
     /* -------------------------------------------------------------------------- */
-        app.post("/users", async (req, res) => {
-          const user = req.body;
-          const query = { email: user.email };
-          const existingUser = await userCollection.findOne(query);
-          if (existingUser) {
-            return res.send({ message: "user already exists" });
-          }
-          const result = await userCollection.insertOne(user);
 
-          res.send(result);
-        });
+    /* -------------------------- ADD VALID USER INFORMATION ON DATABASE -------------------------- */
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "user already exists" });
+      }
+      const result = await userCollection.insertOne(user);
 
+      res.send(result);
+    });
 
-        app.post('/class',async(req, res) => {
-            const body = req.body;
-
-            console.log(body);
-            const result = await classCollection.insertOne(body)
-            res.send(result)
-        })
+    /* -------------------------- ADD INSTRUCTOR CLASS ON DATABASE -------------------------- */
+    app.post("/class", async (req, res) => {
+      const body = req.body;
+      const result = await classCollection.insertOne(body);
+      res.send(result);
+    });
 
     await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Database is connected😀😀😀 "
-    );
+    console.log("Database is connected😀😀😀 ");
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
