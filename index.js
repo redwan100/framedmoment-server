@@ -42,6 +42,7 @@ async function run() {
     // Send a ping to confirm a successful connection
 
     const userCollection = client.db("photographyDB").collection('users')
+    const classCollection = client.db("photographyDB").collection('classes')
 
 /* -------------------------------------------------------------------------- */
 /*                                  GET ROUTE                                 */
@@ -65,6 +66,14 @@ async function run() {
 
           res.send(result);
         });
+
+        app.post('/class',async(req, res) => {
+            const body = req.body;
+
+            const result = await classCollection.insertOne(body)
+
+            res.send(result)
+        })
 
     await client.db("admin").command({ ping: 1 });
     console.log(
