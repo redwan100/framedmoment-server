@@ -67,17 +67,18 @@ async function run() {
           res.send(result);
         });
 
+
         app.post('/class',async(req, res) => {
             const body = req.body;
 
+            console.log(body);
             const result = await classCollection.insertOne(body)
-
             res.send(result)
         })
 
     await client.db("admin").command({ ping: 1 });
     console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
+      "Database is connected😀😀😀 "
     );
   } finally {
     // Ensures that the client will close when you finish/error
