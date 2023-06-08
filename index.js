@@ -5,8 +5,8 @@ require("dotenv").config();
 
 const app = express();
 
-
-
+ 
+  
 /* -------------------------------------------------------------------------- */
 /*                                 MIDDLEWARE                                 */
 /* -------------------------------------------------------------------------- */
@@ -23,7 +23,7 @@ app.get('/', (req, res) => {
 
 
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.yq2vgbi.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -49,14 +49,17 @@ async function run() {
     /* -------------------------------------------------------------------------- */
 
     /* -------------------------------- ALL USERS ------------------------------- */
-    app.get('/all-users', async(req, res) => {
-        const result =await userCollection.find().toArray();
-        res.send(result)
+    app.get("/all-users", async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+
+    app.get('/all-classes', async (req, res) =>{
+      const result = await classCollection.find().toArray();
+      res.send(result)
     })
-
-
-
-
+    
     /* -------------------------------------------------------------------------- */
     /*                                    POST ROUTE                                */
     /* -------------------------------------------------------------------------- */
@@ -78,6 +81,26 @@ async function run() {
     app.post("/class", async (req, res) => {
       const body = req.body;
       const result = await classCollection.insertOne(body);
+      res.send(result);
+    });
+
+    /* -------------------------------------------------------------------------- */
+    /*                                  PATCH / UPDATE ROUTE                        */
+    /* -------------------------------------------------------------------------- */
+    app.patch("/update-user-role/:id", async (req, res) => {
+      const id = req.params.id;
+      const role= req.body;   
+      const filter = { _id: new ObjectId(id) };
+
+    
+      const updatedDoc = {
+        $set: { 
+          role: role.text
+        },
+      };
+
+      const result = await userCollection.updateOne(filter,updatedDoc)
+      
       res.send(result);
     });
 
