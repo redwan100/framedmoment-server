@@ -59,6 +59,15 @@ async function run() {
       const result = await classCollection.find().toArray();
       res.send(result)
     })
+
+
+    app.get('/approved-class', async (req, res) => {
+      const filter = {status: 'approved'}
+
+      const result = await classCollection.find(filter).toArray();
+
+      res.send(result);
+    })
     
     /* -------------------------------------------------------------------------- */
     /*                                    POST ROUTE                                */
@@ -87,7 +96,7 @@ async function run() {
     /* -------------------------------------------------------------------------- */
     /*                                  PATCH / UPDATE ROUTE                        */
     /* -------------------------------------------------------------------------- */
-    app.patch("/update-user-role/:id", async (req, res) => {
+    app.patch("/user/admin/:id", async (req, res) => {
       const id = req.params.id;
       const role= req.body;   
       const filter = { _id: new ObjectId(id) };
@@ -103,6 +112,24 @@ async function run() {
       
       res.send(result);
     });
+
+
+    app.patch('/class-status/:id', async(req, res) => {
+      const id = req.params.id;
+      const status = req.body;
+      const filter = { _id: new ObjectId(id) };
+
+      const updatedDoc = {
+        $set: {
+          status: status.text,
+        },
+      };
+
+      console.log(id, status, filter);
+      const result = await classCollection.updateOne(filter, updatedDoc);
+
+      res.send(result);
+    })
 
     await client.db("admin").command({ ping: 1 });
     console.log("Database is connected😀😀😀 ");
