@@ -5,23 +5,18 @@ require("dotenv").config();
 
 const app = express();
 
- 
-  
 /* -------------------------------------------------------------------------- */
 /*                                 MIDDLEWARE                                 */
 /* -------------------------------------------------------------------------- */
-app.use(express.json())
-app.use(cors())
+app.use(express.json());
+app.use(cors());
 
 /* -------------------------------------------------------------------------- */
 /*                                   ROUTES                                   */
 /* -------------------------------------------------------------------------- */
-app.get('/', (req, res) => {
-    res.send('Photography server is running')
-})
-
-
-
+app.get("/", (req, res) => {
+  res.send("Photography server is running");
+});
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.yq2vgbi.mongodb.net/?retryWrites=true&w=majority`;
@@ -43,7 +38,9 @@ async function run() {
 
     const userCollection = client.db("photographyDB").collection("users");
     const classCollection = client.db("photographyDB").collection("classes");
-    const selectedClassCollection = client.db("photographyDB").collection("selectedClasses");
+    const selectedClassCollection = client
+      .db("photographyDB")
+      .collection("selectedClasses");
 
     /* -------------------------------------------------------------------------- */
     /*                                  GET ROUTE                                 */
@@ -55,21 +52,27 @@ async function run() {
       res.send(result);
     });
 
-
-    app.get('/all-classes', async (req, res) =>{
+    app.get("/all-classes", async (req, res) => {
       const result = await classCollection.find().toArray();
-      res.send(result)
-    })
+      res.send(result);
+    });
 
-
-    app.get('/approved-class', async (req, res) => {
-      const filter = {status: 'approved'}
+    app.get("/approved-class", async (req, res) => {
+      const filter = { status: "approved" };
 
       const result = await classCollection.find(filter).toArray();
 
       res.send(result);
+    });
+
+
+
+    app.get('/allSelectedCourse', async (req, res) => {
+      const result = await selectedClassCollection.find().toArray();
+
+      res.send(result);
     })
-    
+
     /* -------------------------------------------------------------------------- */
     /*                                    POST ROUTE                                */
     /* -------------------------------------------------------------------------- */
@@ -95,34 +98,32 @@ async function run() {
     });
 
 
-    app.post('/userSelectedClass', async(req, res) => {
+    app.post("/userSelectedClass", async (req, res) => {
       const bodyData = req.body;
-      const result = selectedClassCollection.insertOne(bodyData)
+      const result = await selectedClassCollection.insertOne(bodyData);
 
       res.send(result);
-    })
+    });
     /* -------------------------------------------------------------------------- */
     /*                                  PATCH / UPDATE ROUTE                        */
     /* -------------------------------------------------------------------------- */
     app.patch("/user/admin/:id", async (req, res) => {
       const id = req.params.id;
-      const role= req.body;   
+      const role = req.body;
       const filter = { _id: new ObjectId(id) };
 
-    
       const updatedDoc = {
-        $set: { 
-          role: role.text
+        $set: {
+          role: role.text,
         },
       };
 
-      const result = await userCollection.updateOne(filter,updatedDoc)
-      
+      const result = await userCollection.updateOne(filter, updatedDoc);
+
       res.send(result);
     });
 
-
-    app.patch('/class-status/:id', async(req, res) => {
+    app.patch("/class-status/:id", async (req, res) => {
       const id = req.params.id;
       const status = req.body;
       const filter = { _id: new ObjectId(id) };
@@ -137,7 +138,28 @@ async function run() {
       const result = await classCollection.updateOne(filter, updatedDoc);
 
       res.send(result);
+    });
+
+
+    /* -------------------------------------------------------------------------- */
+    /*                                DELETE ROUTE                                */
+    /* -------------------------------------------------------------------------- */
+
+
+    app.delete('/selectedClasses/:id',async(req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const result = await selectedClassCollection.deleteOne(query);
+
+      res.send(result);
     })
+
+
+
+
+
+
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("Database is connected😀😀😀 ");
@@ -152,6 +174,6 @@ run().catch(console.dir);
 /*                                  LISTENER                                  */
 /* -------------------------------------------------------------------------- */
 
-app.listen(port, ()=>{
-    console.log(`Photography is listening on port ${port}`);
-})
+app.listen(port, () => {
+  console.log(`Photography is listening on port ${port}`);
+});
