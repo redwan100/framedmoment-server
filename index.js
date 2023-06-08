@@ -43,6 +43,7 @@ async function run() {
 
     const userCollection = client.db("photographyDB").collection("users");
     const classCollection = client.db("photographyDB").collection("classes");
+    const selectedClassCollection = client.db("photographyDB").collection("selectedClasses");
 
     /* -------------------------------------------------------------------------- */
     /*                                  GET ROUTE                                 */
@@ -93,6 +94,13 @@ async function run() {
       res.send(result);
     });
 
+
+    app.post('/userSelectedClass', async(req, res) => {
+      const bodyData = req.body;
+      const result = selectedClassCollection.insertOne(bodyData)
+
+      res.send(result);
+    })
     /* -------------------------------------------------------------------------- */
     /*                                  PATCH / UPDATE ROUTE                        */
     /* -------------------------------------------------------------------------- */
