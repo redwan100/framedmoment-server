@@ -96,6 +96,13 @@ async function run() {
       res.send(result);
     });
 
+
+    app.get('/admin/instructors', async (req, res) => {
+      const result = await instructorCollection.find().toArray()
+      
+      res.send(result)
+    })
+
     /* -------------------------------------------------------------------------- */
     /*                                    POST ROUTE                                */
     /* -------------------------------------------------------------------------- */
