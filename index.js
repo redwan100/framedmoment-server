@@ -21,10 +21,11 @@ const verifyJWT = (req, res, next) => {
 
   const token = authorization.split(" ")[1];
 
-  jwt.verify(token, ACCESS_TOKEN_SECRET, (error, decoded) => {
+  jwt.verify(token,process.env.ACCESS_TOKEN_SECRET, (error, decoded) => {
     if(error) {
       return res.status(401).send({error:true, message:'Unauthorized access'})
     }
+
 
     req.decoded = decoded
     next();
@@ -65,15 +66,47 @@ async function run() {
       .db("photographyDB")
       .collection("selectedClasses");
 
-    app.post("/jwt", (req, res) => {
-      const body = req.body;
 
-      const token = jwt.sign(body, ACCESS_TOKEN_SECRET, {
-        expiresIn: "1d",
+    app.post("/jwt", (req, res) => {
+      const email = req.body;
+
+      const token = jwt.sign(email, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: '1h',
       });
 
       res.send({ token });
     });
+
+
+    const verifyAdmin = async(req,res, next) => {
+      const email = req.decoded.email;
+      const query= {email: email}
+      const user = await userCollection.findOne(query)
+
+      if(user?.role !== 'admin') {
+        return res.status(401).send({error: true, message:'Unauthorized access'})
+      }
+
+      next()
+
+    }
+
+
+
+     app.get("/user/admin/:email", verifyJWT,  async (req, res) => {
+       const email = req.params.email;
+       if (req.decoded.email !== email) {
+         res.send({ admin: false });
+       }
+       const query = { email: email };
+       const user = await userCollection.findOne(query);
+       const result = { admin: user?.role === "admin" };
+
+       res.send(result);
+     });
+
+
+     
     /* -------------------------------------------------------------------------- */
     /*                                  GET ROUTE                                 */
     /* -------------------------------------------------------------------------- */
@@ -95,9 +128,9 @@ async function run() {
       const result = await classCollection.find(filter).toArray();
 
       res.send(result);
-    });
+    }); 
 
-    app.get("/allSelectedCourse", async (req, res) => {
+    app.get("/allSelectedCourse",  async (req, res) => {
       const result = await selectedClassCollection.find().toArray();
 
       res.send(result);
