@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
-
+const jwt = require("jsonwebtoken");
 const app = express();
 
 /* -------------------------------------------------------------------------- */
@@ -10,6 +10,19 @@ const app = express();
 /* -------------------------------------------------------------------------- */
 app.use(express.json());
 app.use(cors());
+
+const verifyJWT = (req, res, next) => {
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    return res
+      .status(401)
+      .send({ error: true, message: "unauthorized access" });
+  }
+
+  const token = authorization.split(" ")[1];
+
+  jwt.verify(token, ACCESS_TOKEN_SECRET, (error, decoded) => {});
+};
 
 /* -------------------------------------------------------------------------- */
 /*                                   ROUTES                                   */
@@ -37,11 +50,23 @@ async function run() {
     // Send a ping to confirm a successful connection
 
     const userCollection = client.db("photographyDB").collection("users");
+    const instructorCollection = client
+      .db("photographyDB")
+      .collection("instructors");
     const classCollection = client.db("photographyDB").collection("classes");
     const selectedClassCollection = client
       .db("photographyDB")
       .collection("selectedClasses");
 
+    app.post("/jwt", (req, res) => {
+      const body = req.body;
+
+      const token = jwt.sign(body, ACCESS_TOKEN_SECRET, {
+        expiresIn: "1d",
+      });
+
+      res.send({ token });
+    });
     /* -------------------------------------------------------------------------- */
     /*                                  GET ROUTE                                 */
     /* -------------------------------------------------------------------------- */
@@ -65,19 +90,36 @@ async function run() {
       res.send(result);
     });
 
-
-
-    app.get('/allSelectedCourse', async (req, res) => {
+    app.get("/allSelectedCourse", async (req, res) => {
       const result = await selectedClassCollection.find().toArray();
 
       res.send(result);
-    })
+    });
 
     /* -------------------------------------------------------------------------- */
     /*                                    POST ROUTE                                */
     /* -------------------------------------------------------------------------- */
 
-    /* -------------------------- ADD VALID USER INFORMATION ON DATABASE -------------------------- */
+    /* -------------------- ADDED ALL INSTRUCTOR INOFRMATION -------------------- */
+
+    app.post("/admin/instructor", async (req, res) => {
+      const instructor = req.body;
+      const query = { email: instructor.email };
+
+      console.log(instructor.email);
+
+      const existingInstructor =await instructorCollection.findOne(query);
+
+      if (existingInstructor) {
+        return res.send("Already instructor exist");
+      }
+
+      const result = await instructorCollection.insertOne(instructor);
+
+      res.send(result);
+    });
+
+    /* -------------------------- ADDED VALID USER INFORMATION ON DATABASE -------------------------- */
     app.post("/users", async (req, res) => {
       const user = req.body;
       const query = { email: user.email };
@@ -90,13 +132,12 @@ async function run() {
       res.send(result);
     });
 
-    /* -------------------------- ADD INSTRUCTOR CLASS ON DATABASE -------------------------- */
+    /* -------------------------- ADDED INSTRUCTOR CLASS ON DATABASE -------------------------- */
     app.post("/class", async (req, res) => {
       const body = req.body;
       const result = await classCollection.insertOne(body);
       res.send(result);
     });
-
 
     app.post("/userSelectedClass", async (req, res) => {
       const bodyData = req.body;
@@ -140,26 +181,17 @@ async function run() {
       res.send(result);
     });
 
-
     /* -------------------------------------------------------------------------- */
     /*                                DELETE ROUTE                                */
     /* -------------------------------------------------------------------------- */
 
-
-    app.delete('/selectedClasses/:id',async(req, res) => {
+    app.delete("/selectedClasses/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) };
       const result = await selectedClassCollection.deleteOne(query);
 
       res.send(result);
-    })
-
-
-
-
-
-
-
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log("Database is connected😀😀😀 ");
