@@ -21,7 +21,14 @@ const verifyJWT = (req, res, next) => {
 
   const token = authorization.split(" ")[1];
 
-  jwt.verify(token, ACCESS_TOKEN_SECRET, (error, decoded) => {});
+  jwt.verify(token, ACCESS_TOKEN_SECRET, (error, decoded) => {
+    if(error) {
+      return res.status(401).send({error:true, message:'Unauthorized access'})
+    }
+
+    req.decoded = decoded
+    next();
+  });
 };
 
 /* -------------------------------------------------------------------------- */
@@ -82,7 +89,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/approved-class", async (req, res) => {
+    app.get("/approved-class",  async (req, res) => {
       const filter = { status: "approved" };
 
       const result = await classCollection.find(filter).toArray();
@@ -98,7 +105,8 @@ async function run() {
 
 
     app.get('/admin/instructors', async (req, res) => {
-      const result = await instructorCollection.find().toArray()
+      const query= {role: 'instructor'}
+      const result = await userCollection.find(query).toArray()
       
       res.send(result)
     })
