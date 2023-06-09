@@ -91,11 +91,24 @@ async function run() {
 
     }
 
+    const verifyInstructor = async(req,res, next) => {
+      const email = req.decoded.email;
+      const query= {email: email}
+      const user = await userCollection.findOne(query)
+
+      if(user?.role !== 'instructor') {
+        return res.status(401).send({error: true, message:'Unauthorized access'})
+      }
+
+      next()
+
+    }
 
 
-     app.get("/user/admin/:email", verifyJWT,  async (req, res) => {
-       const email = req.params.email;
-       if (req.decoded.email !== email) {
+/* ------------------------------- ADMIN ROUTE ------------------------------ */
+app.get("/user/admin/:email", verifyJWT,  async (req, res) => {
+  const email = req.params.email;
+  if (req.decoded.email !== email) {
          res.send({ admin: false });
        }
        const query = { email: email };
@@ -105,20 +118,49 @@ async function run() {
        res.send(result);
      });
 
-
      
+     /* ------------------------------- INSTRUCTOR ROUTE ------------------------------ */
+     app.get("/user/instructor/:email", verifyJWT,  async (req, res) => {
+       const email = req.params.email;
+       if (req.decoded.email !== email) {
+         res.send({ admin: false });
+       }
+       const query = { email: email };
+       const user = await userCollection.findOne(query);
+       const result = { instructor: user?.role === "instructor" };
+       
+       res.send(result);
+      });
+      
+      /* ------------------------------- STUDENT ROUTE ------------------------------ */
+     app.get("/user/student/:email", verifyJWT,  async (req, res) => {
+       const email = req.params.email;
+       if (req.decoded.email !== email) {
+         res.send({ admin: false, instructor: false });
+       }
+       const query = { email: email };
+       const user = await userCollection.findOne(query);
+       const result = { student: user?.role === "student" };
+
+       res.send(result);
+     });
     /* -------------------------------------------------------------------------- */
     /*                                  GET ROUTE                                 */
     /* -------------------------------------------------------------------------- */
 
     /* -------------------------------- ALL USERS ------------------------------- */
-    app.get("/all-users", async (req, res) => {
+    app.get("/all-users",verifyJWT, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
 
-    app.get("/all-classes", async (req, res) => {
-      const result = await classCollection.find().toArray();
+    app.get("/all-classes", verifyJWT, verifyAdmin, async (req, res) => {
+      let query = {}
+
+      if(req.query.email){
+        query = { instructorEmail: req.query.email };
+      } 
+      const result = await classCollection.find(query).toArray();
       res.send(result);
     });
 
