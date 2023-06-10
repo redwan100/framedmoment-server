@@ -21,13 +21,14 @@ const verifyJWT = (req, res, next) => {
 
   const token = authorization.split(" ")[1];
 
-  jwt.verify(token,process.env.ACCESS_TOKEN_SECRET, (error, decoded) => {
-    if(error) {
-      return res.status(401).send({error:true, message:'Unauthorized access'})
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error, decoded) => {
+    if (error) {
+      return res
+        .status(401)
+        .send({ error: true, message: "Unauthorized access" });
     }
 
-
-    req.decoded = decoded
+    req.decoded = decoded;
     next();
   });
 };
@@ -66,124 +67,141 @@ async function run() {
       .db("photographyDB")
       .collection("selectedClasses");
 
-
     app.post("/jwt", (req, res) => {
       const email = req.body;
 
       const token = jwt.sign(email, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: '1h',
+        expiresIn: "1h",
       });
 
       res.send({ token });
     });
 
-
-    const verifyAdmin = async(req,res, next) => {
+    const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
-      const query= {email: email}
-      const user = await userCollection.findOne(query)
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
 
-      if(user?.role !== 'admin') {
-        return res.status(401).send({error: true, message:'Unauthorized access'})
+      if (user?.role !== "admin") {
+        return res
+          .status(401)
+          .send({ error: true, message: "Unauthorized access" });
       }
 
-      next()
+      next();
+    };
 
-    }
-
-    const verifyInstructor = async(req,res, next) => {
+    const verifyInstructor = async (req, res, next) => {
       const email = req.decoded.email;
-      const query= {email: email}
-      const user = await userCollection.findOne(query)
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
 
-      if(user?.role !== 'instructor') {
-        return res.status(401).send({error: true, message:'Unauthorized access'})
+      if (user?.role !== "instructor") {
+        return res
+          .status(401)
+          .send({ error: true, message: "Unauthorized access" });
       }
 
-      next()
+      next();
+    };
 
-    }
+    /* ------------------------------- ADMIN ROUTE ------------------------------ */
+    app.get("/user/admin/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      if (req.decoded.email !== email) {
+        res.send({ admin: false });
+      }
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const result = { admin: user?.role === "admin" };
 
+      res.send(result);
+    });
 
-/* ------------------------------- ADMIN ROUTE ------------------------------ */
-app.get("/user/admin/:email", verifyJWT,  async (req, res) => {
-  const email = req.params.email;
-  if (req.decoded.email !== email) {
-         res.send({ admin: false });
-       }
-       const query = { email: email };
-       const user = await userCollection.findOne(query);
-       const result = { admin: user?.role === "admin" };
+    /* ------------------------------- INSTRUCTOR ROUTE ------------------------------ */
+    app.get("/user/instructor/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      if (req.decoded.email !== email) {
+        res.send({ admin: false });
+      }
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const result = { instructor: user?.role === "instructor" };
 
-       res.send(result);
-     });
+      res.send(result);
+    });
 
-     
-     /* ------------------------------- INSTRUCTOR ROUTE ------------------------------ */
-     app.get("/user/instructor/:email", verifyJWT,  async (req, res) => {
-       const email = req.params.email;
-       if (req.decoded.email !== email) {
-         res.send({ admin: false });
-       }
-       const query = { email: email };
-       const user = await userCollection.findOne(query);
-       const result = { instructor: user?.role === "instructor" };
-       
-       res.send(result);
-      });
-      
-      /* ------------------------------- STUDENT ROUTE ------------------------------ */
-     app.get("/user/student/:email", verifyJWT,  async (req, res) => {
-       const email = req.params.email;
-       if (req.decoded.email !== email) {
-         res.send({ admin: false, instructor: false });
-       }
-       const query = { email: email };
-       const user = await userCollection.findOne(query);
-       const result = { student: user?.role === "student" };
+    /* ------------------------------- STUDENT ROUTE ------------------------------ */
+    app.get("/user/student/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      if (req.decoded.email !== email) {
+        res.send({ admin: false, instructor: false });
+      }
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const result = { student: user?.role === "student" };
 
-       res.send(result);
-     });
+      res.send(result);
+    });
     /* -------------------------------------------------------------------------- */
     /*                                  GET ROUTE                                 */
     /* -------------------------------------------------------------------------- */
 
     /* -------------------------------- ALL USERS ------------------------------- */
-    app.get("/all-users",verifyJWT, verifyAdmin, async (req, res) => {
+    app.get("/all-users", verifyJWT, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
 
-    app.get("/all-classes", verifyJWT, verifyAdmin, async (req, res) => {
-      let query = {}
+    app.get("/all-classes", async (req, res) => {
+      let query = {};
 
-      if(req.query.email){
+      if (req.query.email) {
         query = { instructorEmail: req.query.email };
-      } 
+      }
       const result = await classCollection.find(query).toArray();
       res.send(result);
     });
 
-    app.get("/approved-class",  async (req, res) => {
+    app.get("/instructor-classes/:email",verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const query = {instructorEmail: email}
+
+      const result =await classCollection.find(query).toArray()
+      res.send(result);
+    });
+
+    app.get("/approved-class", async (req, res) => {
       const filter = { status: "approved" };
 
       const result = await classCollection.find(filter).toArray();
 
       res.send(result);
-    }); 
+    });
 
-    app.get("/allSelectedCourse",  async (req, res) => {
+
+    app.get("/allSelectedCourse", async (req, res) => {
       const result = await selectedClassCollection.find().toArray();
 
       res.send(result);
     });
 
+    app.get("/admin/instructors", async (req, res) => {
+      const query = { role: "instructor" };
+      const result = await userCollection.find(query).toArray();
 
-    app.get('/admin/instructors', async (req, res) => {
-      const query= {role: 'instructor'}
-      const result = await userCollection.find(query).toArray()
-      
-      res.send(result)
+      res.send(result);
+    });
+
+    
+
+
+    app.get('/route-path/:email', async(req, res) => {
+      const email = req.params.email;
+      const query = {email : email}
+
+      const result = await userCollection.findOne(query)
+      res.send(result) 
     })
 
     /* -------------------------------------------------------------------------- */
@@ -198,7 +216,7 @@ app.get("/user/admin/:email", verifyJWT,  async (req, res) => {
 
       console.log(instructor.email);
 
-      const existingInstructor =await instructorCollection.findOne(query);
+      const existingInstructor = await instructorCollection.findOne(query);
 
       if (existingInstructor) {
         return res.send("Already instructor exist");
