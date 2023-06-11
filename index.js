@@ -175,7 +175,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/approved-class", async (req, res) => {
+    app.get("/approved-class",  async (req, res) => {
       const filter = { status: "approved" };
 
       const result = await classCollection.find(filter).toArray();
@@ -185,7 +185,7 @@ async function run() {
 
     /* -------------------------- USER ROLE BASED ROUTE ------------------------- */
 
-    app.get("/allSelectedCourse", async (req, res) => {
+    app.get("/allSelectedCourse",  async (req, res) => {
       let query = {}
       if(req.query.email){
         query={email: req.query.email}
@@ -194,7 +194,15 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/admin/instructors", async (req, res) => {
+    app.get("/selectClassById/:id",  async (req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+
+      const result = await selectedClassCollection.findOne(query)
+      res.send(result);
+    });
+
+    app.get("/admin/instructors",  async (req, res) => {
       const query = { role: "instructor" };
       const result = await userCollection.find(query).toArray();
 
@@ -294,7 +302,7 @@ async function run() {
 
 
 
-    app.patch('/feedback/:id', async(req,res) => {
+    app.patch('/feedback/:id',verifyJWT, verifyAdmin, async(req,res) => {
       const id = req.params.id;
       const update = req.body;
       const filter = {_id: new ObjectId(id)}
@@ -303,8 +311,7 @@ async function run() {
           feedback: update.feedback
         }
       }
-      console.log(updateDoc);
-      const result = classCollection.updateOne(filter,updateDoc)
+      const result =await classCollection.updateOne(filter,updateDoc)
       
       res.send(result)
 
@@ -340,14 +347,26 @@ async function run() {
       });
     });
 
+
     app.post("/payments", async (req, res) => {
       const payment = req.body;
-      const result = await paymentClassCollection.insertOne(payment)
+      const { classId,...rest} = payment;
+      const result = await paymentClassCollection.insertOne(rest)
+      const query = {_id: new ObjectId(classId)}
 
-      const query = {_id: {$in : payment.classId.map(id => new ObjectId(id))}}
+      const deleteResult = await selectedClassCollection.deleteOne(query)
 
-      const deleteResult = await selectedClassCollection.deleteMany(query)
-      res.send({result, deleteResult})
+      const filter = {_id: new ObjectId(payment.course_id)}
+      const updatedDoc = {
+        $inc:{
+          availableSeat: -1, 
+          enrolled: 1
+        }
+      }
+
+      const updateResult = await classCollection.updateOne(filter, updatedDoc)
+
+      res.send({ result, deleteResult, updateResult });
     });
 
 
