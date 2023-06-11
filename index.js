@@ -4,7 +4,7 @@ const port = process.env.PORT || 5000;
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const app = express();
-
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 /* -------------------------------------------------------------------------- */
 /*                                 MIDDLEWARE                                 */
 /* -------------------------------------------------------------------------- */
@@ -65,7 +65,11 @@ async function run() {
     const classCollection = client.db("photographyDB").collection("classes");
     const selectedClassCollection = client
       .db("photographyDB")
-      .collection("selectedClasses");
+      .collection("selectedClasses");   
+    const paymentClassCollection = client
+      .db("photographyDB")
+      .collection("payments");
+
 
     app.post("/jwt", (req, res) => {
       const email = req.body;
@@ -163,11 +167,11 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/instructor-classes/:email",verifyJWT, async (req, res) => {
+    app.get("/instructor-classes/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
-      const query = {instructorEmail: email}
+      const query = { instructorEmail: email };
 
-      const result =await classCollection.find(query).toArray()
+      const result = await classCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -179,10 +183,14 @@ async function run() {
       res.send(result);
     });
 
+    /* -------------------------- USER ROLE BASED ROUTE ------------------------- */
 
     app.get("/allSelectedCourse", async (req, res) => {
-      const result = await selectedClassCollection.find().toArray();
-
+      let query = {}
+      if(req.query.email){
+        query={email: req.query.email}
+      }
+      const result = await selectedClassCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -193,28 +201,24 @@ async function run() {
       res.send(result);
     });
 
-    
-
-
-    app.get('/route-path/:email', async(req, res) => {
+    app.get("/route-path/:email", async (req, res) => {
       const email = req.params.email;
-      const query = {email : email}
+      const query = { email: email };
 
-      const result = await userCollection.findOne(query)
-      res.send(result) 
-    })
+      const result = await userCollection.findOne(query);
+      res.send(result);
+    });
 
     /* -------------------------------------------------------------------------- */
     /*                                    POST ROUTE                                */
     /* -------------------------------------------------------------------------- */
 
-    /* -------------------- ADDED ALL INSTRUCTOR INOFRMATION -------------------- */
+    /* -------------------- ADDED ALL INSTRUCTOR INFORMATION -------------------- */
 
     app.post("/admin/instructor", async (req, res) => {
       const instructor = req.body;
       const query = { email: instructor.email };
 
-      console.log(instructor.email);
 
       const existingInstructor = await instructorCollection.findOne(query);
 
@@ -256,7 +260,7 @@ async function run() {
     /* -------------------------------------------------------------------------- */
     /*                                  PATCH / UPDATE ROUTE                        */
     /* -------------------------------------------------------------------------- */
-    app.patch("/user/admin/:id", async (req, res) => {
+    app.patch("/user/admin/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const role = req.body;
       const filter = { _id: new ObjectId(id) };
@@ -283,11 +287,28 @@ async function run() {
         },
       };
 
-      console.log(id, status, filter);
       const result = await classCollection.updateOne(filter, updatedDoc);
 
       res.send(result);
     });
+
+
+
+    app.patch('/feedback/:id', async(req,res) => {
+      const id = req.params.id;
+      const update = req.body;
+      const filter = {_id: new ObjectId(id)}
+      const updateDoc = {
+        $set:{
+          feedback: update.feedback
+        }
+      }
+      console.log(updateDoc);
+      const result = classCollection.updateOne(filter,updateDoc)
+      
+      res.send(result)
+
+    })
 
     /* -------------------------------------------------------------------------- */
     /*                                DELETE ROUTE                                */
@@ -300,6 +321,35 @@ async function run() {
 
       res.send(result);
     });
+
+
+    /* -------------------------- STRIPE PAYMENT ROUTE -------------------------- */
+
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = price * 100;
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      const result = await paymentClassCollection.insertOne(payment)
+
+      const query = {_id: {$in : payment.classId.map(id => new ObjectId(id))}}
+
+      const deleteResult = await selectedClassCollection.deleteMany(query)
+      res.send({result, deleteResult})
+    });
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("Database is connected😀😀😀 ");
