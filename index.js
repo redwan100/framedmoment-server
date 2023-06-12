@@ -37,7 +37,7 @@ const verifyJWT = (req, res, next) => {
 /*                                   ROUTES                                   */
 /* -------------------------------------------------------------------------- */
 app.get("/", (req, res) => {
-  res.send("Photography server is running");
+  res.send("photography server is running");
 });
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
@@ -55,7 +55,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    client.connect();
     // Send a ping to confirm a successful connection
 
     const userCollection = client.db("photographyDB").collection("users");
@@ -65,14 +65,13 @@ async function run() {
     const classCollection = client.db("photographyDB").collection("classes");
     const selectedClassCollection = client
       .db("photographyDB")
-      .collection("selectedClasses");   
+      .collection("selectedClasses");
     const paymentClassCollection = client
       .db("photographyDB")
       .collection("payments");
     const enrollClassCollection = client
       .db("photographyDB")
       .collection("enrolled");
-
 
     app.post("/jwt", (req, res) => {
       const email = req.body;
@@ -178,7 +177,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/approved-class",  async (req, res) => {
+    app.get("/approved-class", async (req, res) => {
       const filter = { status: "approved" };
 
       const result = await classCollection.find(filter).toArray();
@@ -186,33 +185,36 @@ async function run() {
       res.send(result);
     });
 
-    app.get('/popularClass', async(req, res) =>{
-      
-      const result = await classCollection.find().sort({enrolled: -1}).limit(6).toArray();
+    app.get("/popularClass", async (req, res) => {
+      const result = await classCollection
+        .find()
+        .sort({ enrolled: -1 })
+        .limit(6)
+        .toArray();
 
       res.send(result);
-    })
+    });
 
     /* -------------------------- USER ROLE BASED ROUTE ------------------------- */
 
-    app.get("/allSelectedCourse",  async (req, res) => {
-      let query = {}
-      if(req.query.email){
-        query={email: req.query.email}
+    app.get("/allSelectedCourse", async (req, res) => {
+      let query = {};
+      if (req.query.email) {
+        query = { email: req.query.email };
       }
       const result = await selectedClassCollection.find(query).toArray();
       res.send(result);
     });
 
-    app.get("/selectClassById/:id",  async (req, res) => {
+    app.get("/selectClassById/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) };
 
-      const result = await selectedClassCollection.findOne(query)
+      const result = await selectedClassCollection.findOne(query);
       res.send(result);
     });
 
-    app.get("/admin/instructors",  async (req, res) => {
+    app.get("/admin/instructors", async (req, res) => {
       const query = { role: "instructor" };
       const result = await userCollection.find(query).toArray();
 
@@ -227,17 +229,27 @@ async function run() {
       res.send(result);
     });
 
-
-
-    app.get('/dashboard/paymentHistory',verifyJWT, async(req, res) => {
-      let query ={};
-      if(req.query.email){
-        query={email:req.query.email}
+    app.get("/dashboard/paymentHistory", verifyJWT, async (req, res) => {
+      let query = {};
+      if (req.query.email) {
+        query = { email: req.query.email };
       }
 
-      const result = await paymentClassCollection.find(query).sort({date: -1}).toArray();
+      const result = await paymentClassCollection
+        .find(query)
+        .sort({ date: -1 })
+        .toArray();
 
       res.send(result);
+    });
+
+
+    app.get('/userInformation/:email', verifyJWT, async(req,res) => {
+      const email = req.params.email
+      const query= {email: email}
+      const result = await userCollection.findOne(query)
+      res.send(result)
+
     })
 
     /* -------------------------------------------------------------------------- */
@@ -249,7 +261,6 @@ async function run() {
     app.post("/admin/instructor", async (req, res) => {
       const instructor = req.body;
       const query = { email: instructor.email };
-
 
       const existingInstructor = await instructorCollection.findOne(query);
 
@@ -323,22 +334,19 @@ async function run() {
       res.send(result);
     });
 
-
-
-    app.patch('/feedback/:id',verifyJWT, verifyAdmin, async(req,res) => {
+    app.patch("/feedback/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const update = req.body;
-      const filter = {_id: new ObjectId(id)}
+      const filter = { _id: new ObjectId(id) };
       const updateDoc = {
-        $set:{
-          feedback: update.feedback
-        }
-      }
-      const result =await classCollection.updateOne(filter,updateDoc)
-      
-      res.send(result)
+        $set: {
+          feedback: update.feedback,
+        },
+      };
+      const result = await classCollection.updateOne(filter, updateDoc);
 
-    })
+      res.send(result);
+    });
 
     /* -------------------------------------------------------------------------- */
     /*                                DELETE ROUTE                                */
@@ -351,7 +359,6 @@ async function run() {
 
       res.send(result);
     });
-
 
     /* -------------------------- STRIPE PAYMENT ROUTE -------------------------- */
 
@@ -370,30 +377,28 @@ async function run() {
       });
     });
 
-
     app.post("/payments", async (req, res) => {
       const payment = req.body;
-      const { classId,...rest} = payment;
-      const result = await paymentClassCollection.insertOne(rest)
-      const query = {_id: new ObjectId(classId)}
+      const { classId, ...rest } = payment;
+      const result = await paymentClassCollection.insertOne(rest);
+      const query = { _id: new ObjectId(classId) };
 
-      const deleteResult = await selectedClassCollection.deleteOne(query)
+      const deleteResult = await selectedClassCollection.deleteOne(query);
 
-      const filter = {_id: new ObjectId(payment.course_id)}
+      const filter = { _id: new ObjectId(payment.course_id) };
       const updatedDoc = {
-        $inc:{
-          availableSeat: -1, 
-          enrolled: 1
-        }
-      }
+        $inc: {
+          availableSeat: -1,
+          enrolled: 1,
+        },
+      };
 
-      const updateResult = await classCollection.updateOne(filter, updatedDoc)
+      const updateResult = await classCollection.updateOne(filter, updatedDoc);
 
       res.send({ result, deleteResult, updateResult });
     });
 
-
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Database is connected😀😀😀 ");
   } finally {
     // Ensures that the client will close when you finish/error
