@@ -69,6 +69,9 @@ async function run() {
     const paymentClassCollection = client
       .db("photographyDB")
       .collection("payments");
+    const enrollClassCollection = client
+      .db("photographyDB")
+      .collection("enrolled");
 
 
     app.post("/jwt", (req, res) => {
@@ -183,6 +186,13 @@ async function run() {
       res.send(result);
     });
 
+    app.get('/popularClass', async(req, res) =>{
+      
+      const result = await classCollection.find().sort({enrolled: -1}).limit(6).toArray();
+
+      res.send(result);
+    })
+
     /* -------------------------- USER ROLE BASED ROUTE ------------------------- */
 
     app.get("/allSelectedCourse",  async (req, res) => {
@@ -216,6 +226,19 @@ async function run() {
       const result = await userCollection.findOne(query);
       res.send(result);
     });
+
+
+
+    app.get('/dashboard/paymentHistory',verifyJWT, async(req, res) => {
+      let query ={};
+      if(req.query.email){
+        query={email:req.query.email}
+      }
+
+      const result = await paymentClassCollection.find(query).sort({date: -1}).toArray();
+
+      res.send(result);
+    })
 
     /* -------------------------------------------------------------------------- */
     /*                                    POST ROUTE                                */
