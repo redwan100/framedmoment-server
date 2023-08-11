@@ -5,6 +5,8 @@ require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const app = express();
 const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
+
+
 /* -------------------------------------------------------------------------- */
 /*                                 MIDDLEWARE                                 */
 /* -------------------------------------------------------------------------- */
@@ -243,14 +245,12 @@ async function run() {
       res.send(result);
     });
 
-
-    app.get('/userInformation/:email', verifyJWT, async(req,res) => {
-      const email = req.params.email
-      const query= {email: email}
-      const result = await userCollection.findOne(query)
-      res.send(result)
-
-    })
+    app.get("/userInformation/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await userCollection.findOne(query);
+      res.send(result);
+    });
 
     /* -------------------------------------------------------------------------- */
     /*                                    POST ROUTE                                */
@@ -351,6 +351,14 @@ async function run() {
     /* -------------------------------------------------------------------------- */
     /*                                DELETE ROUTE                                */
     /* -------------------------------------------------------------------------- */
+
+    app.delete("/instructor/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await userCollection.deleteOne(query);
+
+      res.send(result);
+    });
 
     app.delete("/selectedClasses/:id", async (req, res) => {
       const id = req.params.id;
