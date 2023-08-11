@@ -5,13 +5,14 @@ require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const app = express();
 const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
-
+const morgan = require("morgan");
 
 /* -------------------------------------------------------------------------- */
 /*                                 MIDDLEWARE                                 */
 /* -------------------------------------------------------------------------- */
 app.use(express.json());
 app.use(cors());
+app.use(morgan("combined"));
 
 const verifyJWT = (req, res, next) => {
   const authorization = req.headers.authorization;
@@ -139,6 +140,14 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/instructorDetails/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+
+      const result = await userCollection.findOne(query);
+      res.send(result);
+    });
+
     /* ------------------------------- STUDENT ROUTE ------------------------------ */
     app.get("/user/student/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
@@ -168,6 +177,14 @@ async function run() {
         query = { instructorEmail: req.query.email };
       }
       const result = await classCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.get("/adminOrInstructor/:email", async (req, res) => {
+      const { email } = req.params;
+      const query = { email: email };
+
+      const result = await userCollection.findOne(query);
       res.send(result);
     });
 
@@ -352,7 +369,7 @@ async function run() {
     /*                                DELETE ROUTE                                */
     /* -------------------------------------------------------------------------- */
 
-    app.delete("/instructor/:id", verifyJWT, async (req, res) => {
+    app.delete("/instructor/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
